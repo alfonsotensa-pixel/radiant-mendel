@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Elemental Club · Monitoreo de Gasto Mensual</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar__inner">
+      <div class="brand">
+        <div class="brand__mark">E</div>
+        <div>
+          <div class="brand__name">ELEMENTAL CLUB</div>
+          <div class="brand__sub">Publicación de resultados · Presupuesto vs. Gasto real</div>
+        </div>
+      </div>
+      <div class="topbar__right">
+        <span id="liveBadge" class="badge badge--idle"><span class="badge__dot"></span><span id="liveText">Conectando…</span></span>
+        <span class="muted small" id="lastUpdate">—</span>
+        <button id="setupBtn" class="btn" type="button" title="Configurar conexión a Supabase">⚙ Conexión</button>
+        <button id="refreshBtn" class="btn" type="button" title="Actualizar ahora">↻ Actualizar</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- Encabezado del periodo -->
+    <section class="period">
+      <div>
+        <div class="monthpick" role="group" aria-label="Mes a comparar contra el presupuesto">
+          <span class="monthpick__label">Comparar mes</span>
+          <button id="monthPrev" class="mp-btn" type="button" aria-label="Mes anterior">‹</button>
+          <select id="monthSelect" class="mp-select" aria-label="Seleccionar mes"></select>
+          <button id="monthNext" class="mp-btn" type="button" aria-label="Mes siguiente">›</button>
+          <button id="monthReset" class="mp-reset" type="button" hidden>Volver al mes actual</button>
+        </div>
+        <h1 id="monthTitle">Gasto mensual</h1>
+        <p class="muted" id="periodText">—</p>
+      </div>
+      <div class="period__progress">
+        <div class="period__labels"><span id="periodLabel">Avance del mes</span><strong id="monthPct">0%</strong></div>
+        <div class="track"><div class="track__fill track__fill--neutral" id="monthBar"></div></div>
+      </div>
+    </section>
+
+    <!-- KPIs -->
+    <section class="kpis">
+      <article class="card kpi">
+        <span class="kpi__label">Presupuesto mensual</span>
+        <span class="kpi__value" id="kpiBudget">—</span>
+        <span class="kpi__foot muted" id="kpiBudgetFoot">Operativo calibrado</span>
+      </article>
+      <article class="card kpi">
+        <span class="kpi__label" id="kpiSpentLabel">Gasto acumulado</span>
+        <span class="kpi__value" id="kpiSpent">—</span>
+        <span class="kpi__foot" id="kpiSpentFoot">—</span>
+      </article>
+      <article class="card kpi">
+        <span class="kpi__label" id="kpiProjLabel">Proyección al cierre</span>
+        <span class="kpi__value" id="kpiProj">—</span>
+        <span class="kpi__foot" id="kpiProjFoot">—</span>
+      </article>
+      <article class="card kpi">
+        <span class="kpi__label" id="kpiAvailLabel">Disponible</span>
+        <span class="kpi__value" id="kpiAvail">—</span>
+        <span class="kpi__foot muted" id="kpiAvailFoot">—</span>
+      </article>
+    </section>
+
+    <!-- Resumen semáforo -->
+    <section class="lights">
+      <div class="light light--green"><span class="light__dot"></span><div><strong id="cntGreen">0</strong><span>En control</span></div></div>
+      <div class="light light--amber"><span class="light__dot"></span><div><strong id="cntAmber">0</strong><span>En riesgo</span></div></div>
+      <div class="light light--red"><span class="light__dot"></span><div><strong id="cntRed">0</strong><span>Exceso / tendencia a exceder</span></div></div>
+    </section>
+
+    <!-- Categorías + Alertas -->
+    <section class="grid-main">
+      <article class="card">
+        <div class="card__head">
+          <h2>Gasto por categoría</h2>
+          <div class="legend small muted">
+            <span><i class="lg lg--bar"></i>Gastado</span>
+            <span><i class="lg lg--mark"></i>Esperado a hoy</span>
+            <span>· Toca una categoría para ver su desglose</span>
+          </div>
+        </div>
+        <div class="cat-table" id="catTable" role="table" aria-label="Gasto por categoría"></div>
+      </article>
+
+      <aside class="card">
+        <div class="card__head"><h2>Alertas</h2><span class="muted small" id="alertCount"></span></div>
+        <ul class="alerts" id="alerts"></ul>
+      </aside>
+    </section>
+
+    <!-- Gráficas -->
+    <section class="grid-charts">
+      <article class="card">
+        <div class="card__head"><h2>Consumo y proyección (% del presupuesto)</h2></div>
+        <div class="chart-box"><canvas id="barChart"></canvas></div>
+      </article>
+      <article class="card">
+        <div class="card__head"><h2>Gasto acumulado diario</h2></div>
+        <div class="chart-box"><canvas id="lineChart"></canvas></div>
+      </article>
+    </section>
+
+    <!-- No operativo + movimientos -->
+    <section class="grid-bottom">
+      <article class="card">
+        <div class="card__head"><h2>Salidas no operativas</h2><span class="muted small">Fuera de presupuesto operativo</span></div>
+        <div class="nonop" id="nonOp"></div>
+        <div id="unmapped" class="unmapped small"></div>
+      </article>
+      <article class="card">
+        <div class="card__head"><h2>Últimos movimientos</h2><span class="muted small" id="txCount"></span></div>
+        <div class="table-scroll">
+          <table class="tx">
+            <thead><tr><th>Fecha</th><th>Categoría</th><th>Concepto</th><th>Cartera</th><th class="num">Monto</th></tr></thead>
+            <tbody id="txBody"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <footer class="foot small muted">
+      <div>
+        <strong>Reglas del semáforo:</strong>
+        <span class="dot dot--green"></span> Proyección &lt; 90 % del presupuesto ·
+        <span class="dot dot--amber"></span> Proyección 90–105 % o ≥ 85 % consumido con más de 7 días restantes ·
+        <span class="dot dot--red"></span> Gasto ≥ 100 % o proyección ≥ 105 %.
+      </div>
+      <div id="sources"></div>
+    </footer>
+  </main>
+
+  <!-- Ventana flotante: desglose de la categoría -->
+  <dialog id="detail" class="sheet" aria-labelledby="dTitle" closedby="any">
+    <div class="sheet__inner">
+      <header class="sheet__head">
+        <span id="dDot" class="dot"></span>
+        <div class="sheet__title">
+          <h2 id="dTitle">Categoría</h2>
+          <p id="dSub" class="muted small"></p>
+        </div>
+        <span id="dPill" class="pill"></span>
+        <button id="dClose" class="icon-btn" type="button" aria-label="Cerrar desglose">✕</button>
+      </header>
+
+      <div class="sheet__summary">
+        <div class="dstats" id="dStats"></div>
+        <div class="track" id="dBar"></div>
+        <div id="dAlert"></div>
+      </div>
+
+      <div class="sheet__body" id="dBody">
+        <section class="sheet__col">
+          <h3>Principales conceptos registrados</h3>
+          <div id="dTitles"></div>
+          <h3>Presupuesto por concepto</h3>
+          <div id="dConcepts"></div>
+          <h3>Por cartera</h3>
+          <div id="dWallets"></div>
+        </section>
+        <section class="sheet__col">
+          <h3>Gasto diario</h3>
+          <div class="chart-box chart-box--sm"><canvas id="dChart"></canvas></div>
+          <h3>Movimientos <span id="dTxCount" class="muted"></span></h3>
+          <div id="dTx" class="dtx-scroll"></div>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Conexión a Supabase (se guarda solo en este navegador) -->
+  <dialog id="setup" class="setup" aria-labelledby="setupTitle">
+    <form id="setupForm" class="setup__form" novalidate>
+      <h2 id="setupTitle">Conectar con Supabase</h2>
+      <p class="muted small">Ingresa los datos del proyecto para ver los gastos reales. Se guardan únicamente en este navegador; no se publican en el sitio.</p>
+      <label class="field">
+        <span>URL del proyecto</span>
+        <input id="setupUrl" type="url" required placeholder="https://xxxxxxxx.supabase.co" autocomplete="off" spellcheck="false" />
+      </label>
+      <label class="field">
+        <span>Clave publicable (anon)</span>
+        <input id="setupKey" type="password" required placeholder="sb_publishable_…" autocomplete="off" spellcheck="false" />
+      </label>
+      <p id="setupError" class="setup__error small" role="alert"></p>
+      <div class="setup__actions">
+        <button id="setupForget" type="button" class="btn-link" hidden>Olvidar en este navegador</button>
+        <span class="spacer"></span>
+        <button id="setupDemo" type="button" class="btn-sec">Ver demo</button>
+        <button id="setupSubmit" type="submit" class="btn-pri">Conectar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/budget.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
