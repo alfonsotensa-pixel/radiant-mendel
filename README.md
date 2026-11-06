@@ -41,6 +41,15 @@ cualquiera de los últimos 24 meses (`HISTORY_MONTHS` en `js/app.js`). Un mes an
 **cerrado**: gasto total vs. presupuesto, sobregiro o remanente final y semáforo de cierre.
 Enlace directo: `index.html#mes=2026-10`.
 
+## Instalar en el teléfono (PWA)
+
+La página es instalable como app (`manifest.webmanifest` + `sw.js`):
+- **Android / Chrome / Edge:** botón verde **⤓ Instalar app** en la barra superior (o menú ⋮ → *Instalar app*).
+- **iPhone / iPad:** en Safari, *Compartir* → *Agregar a pantalla de inicio* (el botón muestra las instrucciones).
+
+El service worker guarda la interfaz para abrirla rápido; los datos de Supabase siempre se consultan en vivo.
+Al publicar cambios grandes, incrementa `VERSION` en `sw.js`.
+
 ## Actualizar el presupuesto
 
 Cuando cambie el PDF en Drive, actualiza los montos en `js/budget.js`. Las categorías de Supabase

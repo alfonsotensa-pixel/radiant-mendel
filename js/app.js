@@ -154,32 +154,57 @@
 
     $("monthTitle").textContent = `Gasto mensual · ${monthName.charAt(0).toUpperCase()}${monthName.slice(1)}`;
     $("periodText").textContent = P.closed
-      ? `Mes cerrado · resultado final contra presupuesto · Presupuesto: ${BUDGET.title}`
-      : `Día ${P.day} de ${P.dim} · ${P.daysLeft} días restantes · Presupuesto: ${BUDGET.title}`;
-    $("monthPct").textContent = P.closed ? "Cerrado" : pct(P.frac);
-    $("monthBar").style.width = `${P.frac * 100}%`;
-    $("periodLabel").textContent = P.closed ? "Mes histórico" : "Avance del mes";
+      ? "Mes cerrado · resultado final contra el presupuesto operativo"
+      : `Día ${P.day} de ${P.dim} · ${P.daysLeft} días restantes`;
     document.body.classList.toggle("is-history", P.closed);
     syncMonthControls();
 
-    // KPIs
+    // Marcador: gasto global del mes vs. presupuesto mensual
     const totalLevel = levelFor(R.projTotal / R.budgetTotal, R.spentTotal / R.budgetTotal);
-    $("kpiBudget").textContent = fmt0.format(R.budgetTotal);
-    $("kpiBudgetFoot").textContent = P.closed ? "Operativo calibrado" : `Esperado a hoy: ${fmt0.format(R.expectedTotal)}`;
-    $("kpiSpentLabel").textContent = P.closed ? "Gasto total del mes" : "Gasto acumulado";
+    const rSpent = R.spentTotal / R.budgetTotal;
+    const spentLevel = P.closed ? levelFor(rSpent, rSpent) : totalLevel;
+    const heroLabels = P.closed
+      ? { green: "Cerró dentro del presupuesto", amber: "Cerró cerca del límite", red: "Cerró excedido" }
+      : { green: "En control", amber: "En riesgo", red: rSpent >= 1 ? "Presupuesto excedido" : "Tendencia a exceder" };
+    $("heroStatus").className = `pill pill--${spentLevel}`;
+    $("heroStatus").textContent = heroLabels[spentLevel];
+    $("heroPct").textContent = pct(rSpent);
+    $("heroPct").className = `t-${spentLevel}`;
+    $("ringFill").setAttribute("stroke-dasharray", `${Math.min(rSpent, 1) * 100} 100`);
+    $("ringFill").setAttribute("class", `ring__fill ring__fill--${spentLevel}`);
+    $("ringMark").setAttribute("transform", `rotate(${Math.min(R.expectedTotal / R.budgetTotal, 1) * 360} 60 60)`);
+    $("ringMark").style.display = P.closed ? "none" : "";
     $("kpiSpent").textContent = fmt0.format(R.spentTotal);
+    $("kpiBudget").textContent = fmt0.format(R.budgetTotal);
+    $("spendBar").style.width = `${Math.min(rSpent, 1) * 100}%`;
+    $("spendBar").className = `track__fill track__fill--${spentLevel}`;
+    $("spendMark").style.left = `${(R.expectedTotal / R.budgetTotal) * 100}%`;
+    $("spendMark").style.display = P.closed ? "none" : "";
+    $("spendPct").textContent = pct(rSpent);
+    $("monthPct").textContent = P.closed ? "Cerrado" : pct(P.frac);
+    $("monthBar").style.width = `${P.frac * 100}%`;
+    $("periodLabel").textContent = P.closed ? "Mes" : "Avance del mes";
+
     const vsExpected = R.spentTotal - R.expectedTotal;
-    $("kpiSpentFoot").innerHTML = `${pct(R.spentTotal / R.budgetTotal)} del presupuesto · <span class="${vsExpected > 0 ? "t-red" : "t-green"}">${vsExpected > 0 ? "+" : "−"}${fmt0.format(Math.abs(vsExpected))} vs. ${P.closed ? "presupuesto" : "esperado"}</span>`;
+    $("kpiExpLabel").textContent = P.closed ? "Vs. presupuesto" : "Esperado a hoy";
+    $("kpiExp").textContent = P.closed ? `${vsExpected > 0 ? "+" : "−"}${fmt0.format(Math.abs(vsExpected))}` : fmt0.format(R.expectedTotal);
+    $("kpiExp").className = `hstat__v ${P.closed ? (vsExpected > 0 ? "t-red" : "t-green") : ""}`;
+    $("kpiSpentFoot").innerHTML = P.closed
+      ? `<span class="muted">${vsExpected > 0 ? "Por encima" : "Por debajo"} del presupuesto</span>`
+      : `<span class="${vsExpected > 0 ? "t-red" : "t-green"}">${vsExpected > 0 ? "+" : "−"}${fmt0.format(Math.abs(vsExpected))} ${vsExpected > 0 ? "arriba" : "abajo"} de lo esperado</span>`;
     $("kpiProjLabel").textContent = P.closed ? "Resultado del cierre" : "Proyección al cierre";
     $("kpiProj").textContent = fmt0.format(R.projTotal);
-    $("kpiProj").className = `kpi__value t-${totalLevel}`;
+    $("kpiProj").className = `hstat__v t-${totalLevel}`;
     const diff = R.projTotal - R.budgetTotal;
     $("kpiProjFoot").innerHTML = `<span class="t-${totalLevel}">${pct(R.projTotal / R.budgetTotal)} · ${diff > 0 ? "exceso" : "ahorro"} ${P.closed ? "real" : "estimado"} ${fmt0.format(Math.abs(diff))}</span>`;
     const avail = R.budgetTotal - R.spentTotal;
     $("kpiAvailLabel").textContent = P.closed ? (avail < 0 ? "Sobregiro" : "Remanente") : "Disponible";
     $("kpiAvail").textContent = fmt0.format(avail);
-    $("kpiAvail").className = `kpi__value ${avail < 0 ? "t-red" : ""}`;
-    $("kpiAvailFoot").textContent = P.daysLeft > 0 ? `≈ ${fmt0.format(Math.max(avail, 0) / P.daysLeft)} por día restante` : avail < 0 ? "Gasto por encima del presupuesto al cierre" : "Presupuesto no ejercido al cierre";
+    $("kpiAvail").className = `hstat__v ${avail < 0 ? "t-red" : ""}`;
+    $("kpiAvailFoot").textContent = P.daysLeft > 0 ? `≈ ${fmt0.format(Math.max(avail, 0) / P.daysLeft)} por día restante` : avail < 0 ? "Por encima del presupuesto" : "Presupuesto no ejercido";
+    const nonOpTotal = R.nonOp.reduce((a, n) => a + n.spent, 0);
+    $("kpiTotal").textContent = fmt0.format(R.spentTotal + nonOpTotal);
+    $("kpiTotalFoot").textContent = `Incluye ${fmt0.format(nonOpTotal)} no operativos`;
 
     // Contadores del semáforo
     const budgeted = R.cats.filter((c) => c.budget > 0 || c.spent > 0);
@@ -269,7 +294,8 @@
     const color = (n) => css.getPropertyValue(n).trim();
     const lvlColor = { green: color("--green"), amber: color("--amber"), red: color("--red"), grey: "#94a3b8" };
     const cats = R.cats.filter((c) => c.budget > 0 || c.spent > 0);
-    const shortName = (n) => n.replace(/ \(.*\)/, "").replace(/ y .*/, "");
+    const SHORT = { nomina: "Nómina", renta: "Renta", servicios: "Servicios", consumibles: "Consumibles", digitales: "Digitales", comisiones: "Comisiones", mantenimiento: "Mantenimiento" };
+    const shortName = (c) => SHORT[c.id] || c.name.replace(/ \(.*\)/, "").replace(/ y .*/, "");
 
     Chart.defaults.font.family = "Inter, system-ui, sans-serif";
     Chart.defaults.color = color("--muted");
@@ -278,7 +304,7 @@
     // Se grafica como % del presupuesto para que categorías chicas y grandes sean comparables.
     const bc = cats.filter((c) => c.budget > 0);
     const barData = {
-      labels: bc.map((c) => shortName(c.name)),
+      labels: bc.map((c) => shortName(c)),
       datasets: [
         { label: "Gastado", data: bc.map((c) => +(c.rSpent * 100).toFixed(1)), backgroundColor: color("--navy-2"), borderRadius: 4, _abs: bc.map((c) => c.spent) },
         { label: R.P.closed ? "Cierre del mes" : "Proyección al cierre", data: bc.map((c) => +(c.rProj * 100).toFixed(1)), backgroundColor: bc.map((c) => lvlColor[c.level] + "66"), borderColor: bc.map((c) => lvlColor[c.level]), borderWidth: 1.5, borderRadius: 4, _abs: bc.map((c) => c.projection) },
@@ -724,10 +750,38 @@
     }
   });
 
+  /* ---------------- App instalable (PWA) ---------------- */
+  const isStandalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+    navigator.serviceWorker.register("sw.js").catch((e) => console.warn("Service worker:", e));
+  }
+  let installEvt = null;
+  const installBtn = $("installBtn");
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    installEvt = e;
+    if (!isStandalone) installBtn.hidden = false;
+  });
+  window.addEventListener("appinstalled", () => { installBtn.hidden = true; installEvt = null; });
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isIOS && !isStandalone) installBtn.hidden = false;
+  installBtn.addEventListener("click", async () => {
+    if (installEvt) {
+      installEvt.prompt();
+      const { outcome } = await installEvt.userChoice;
+      if (outcome === "accepted") installBtn.hidden = true;
+      installEvt = null;
+    } else if (isIOS) {
+      $("iosInstall").showModal();
+    }
+  });
+  $("iosClose").addEventListener("click", () => $("iosInstall").close());
+
   const conn = getConn();
   if (conn && window.supabase) startLive(conn);
   else {
     startDemo();
-    if (!conn) openSetup();
+    // index.html#demo abre directamente el modo demo sin pedir conexión
+    if (!conn && !/demo/.test(location.hash)) openSetup();
   }
 })();

@@ -4,6 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Elemental Club · Monitoreo de Gasto Mensual</title>
+  <meta name="description" content="Monitoreo en tiempo real del gasto mensual de Elemental Club contra el presupuesto." />
+  <meta name="theme-color" content="#1a365d" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Gasto Elemental" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -22,16 +31,17 @@
       <div class="topbar__right">
         <span id="liveBadge" class="badge badge--idle"><span class="badge__dot"></span><span id="liveText">Conectando…</span></span>
         <span class="muted small" id="lastUpdate">—</span>
-        <button id="setupBtn" class="btn" type="button" title="Configurar conexión a Supabase">⚙ Conexión</button>
-        <button id="refreshBtn" class="btn" type="button" title="Actualizar ahora">↻ Actualizar</button>
+        <button id="installBtn" class="btn btn--install" type="button" hidden>⤓<span class="btn__txt"> Instalar app</span></button>
+        <button id="setupBtn" class="btn" type="button" title="Configurar conexión a Supabase" aria-label="Conexión">⚙<span class="btn__txt"> Conexión</span></button>
+        <button id="refreshBtn" class="btn" type="button" title="Actualizar ahora" aria-label="Actualizar">↻<span class="btn__txt"> Actualizar</span></button>
       </div>
     </div>
   </header>
 
   <main class="wrap">
-    <!-- Encabezado del periodo -->
-    <section class="period">
-      <div>
+    <!-- Marcador: gasto global del mes vs. presupuesto mensual -->
+    <section class="hero card" aria-labelledby="monthTitle">
+      <div class="hero__top">
         <div class="monthpick" role="group" aria-label="Mes a comparar contra el presupuesto">
           <span class="monthpick__label">Comparar mes</span>
           <button id="monthPrev" class="mp-btn" type="button" aria-label="Mes anterior">‹</button>
@@ -39,37 +49,67 @@
           <button id="monthNext" class="mp-btn" type="button" aria-label="Mes siguiente">›</button>
           <button id="monthReset" class="mp-reset" type="button" hidden>Volver al mes actual</button>
         </div>
-        <h1 id="monthTitle">Gasto mensual</h1>
-        <p class="muted" id="periodText">—</p>
+        <span id="heroStatus" class="pill pill--grey">—</span>
       </div>
-      <div class="period__progress">
-        <div class="period__labels"><span id="periodLabel">Avance del mes</span><strong id="monthPct">0%</strong></div>
-        <div class="track"><div class="track__fill track__fill--neutral" id="monthBar"></div></div>
-      </div>
-    </section>
 
-    <!-- KPIs -->
-    <section class="kpis">
-      <article class="card kpi">
-        <span class="kpi__label">Presupuesto mensual</span>
-        <span class="kpi__value" id="kpiBudget">—</span>
-        <span class="kpi__foot muted" id="kpiBudgetFoot">Operativo calibrado</span>
-      </article>
-      <article class="card kpi">
-        <span class="kpi__label" id="kpiSpentLabel">Gasto acumulado</span>
-        <span class="kpi__value" id="kpiSpent">—</span>
-        <span class="kpi__foot" id="kpiSpentFoot">—</span>
-      </article>
-      <article class="card kpi">
-        <span class="kpi__label" id="kpiProjLabel">Proyección al cierre</span>
-        <span class="kpi__value" id="kpiProj">—</span>
-        <span class="kpi__foot" id="kpiProjFoot">—</span>
-      </article>
-      <article class="card kpi">
-        <span class="kpi__label" id="kpiAvailLabel">Disponible</span>
-        <span class="kpi__value" id="kpiAvail">—</span>
-        <span class="kpi__foot muted" id="kpiAvailFoot">—</span>
-      </article>
+      <div class="hero__main">
+        <div class="ring" aria-hidden="true">
+          <svg viewBox="0 0 120 120">
+            <circle class="ring__bg" cx="60" cy="60" r="52" />
+            <circle id="ringFill" class="ring__fill" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="0 100" />
+            <line id="ringMark" class="ring__mark" x1="60" y1="2" x2="60" y2="16" />
+          </svg>
+          <div class="ring__center">
+            <strong id="heroPct">0%</strong>
+            <span>del presupuesto</span>
+          </div>
+        </div>
+
+        <div class="hero__info">
+          <h1 id="monthTitle">Gasto mensual</h1>
+          <p class="muted" id="periodText">—</p>
+          <div class="hero__score">
+            <span class="hero__spent" id="kpiSpent">—</span>
+            <span class="hero__of">de <strong id="kpiBudget">—</strong> presupuestados</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bars">
+        <div class="bars__row">
+          <span id="spendLabel">Consumo del presupuesto</span>
+          <div class="track track--lg"><div class="track__fill track__fill--neutral" id="spendBar"></div><span class="track__mark track__mark--lg" id="spendMark" title="Esperado a hoy"></span></div>
+          <strong id="spendPct">0%</strong>
+        </div>
+        <div class="bars__row">
+          <span id="periodLabel">Avance del mes</span>
+          <div class="track track--lg"><div class="track__fill track__fill--time" id="monthBar"></div></div>
+          <strong id="monthPct">0%</strong>
+        </div>
+      </div>
+
+      <div class="hero__stats">
+        <div class="hstat">
+          <span class="hstat__l" id="kpiExpLabel">Esperado a hoy</span>
+          <strong class="hstat__v" id="kpiExp">—</strong>
+          <span class="hstat__f" id="kpiSpentFoot">—</span>
+        </div>
+        <div class="hstat">
+          <span class="hstat__l" id="kpiProjLabel">Proyección al cierre</span>
+          <strong class="hstat__v" id="kpiProj">—</strong>
+          <span class="hstat__f" id="kpiProjFoot">—</span>
+        </div>
+        <div class="hstat">
+          <span class="hstat__l" id="kpiAvailLabel">Disponible</span>
+          <strong class="hstat__v" id="kpiAvail">—</strong>
+          <span class="hstat__f muted" id="kpiAvailFoot">—</span>
+        </div>
+        <div class="hstat">
+          <span class="hstat__l">Egresos totales del mes</span>
+          <strong class="hstat__v" id="kpiTotal">—</strong>
+          <span class="hstat__f muted" id="kpiTotalFoot">—</span>
+        </div>
+      </div>
     </section>
 
     <!-- Resumen semáforo -->
@@ -199,6 +239,19 @@
         <button id="setupSubmit" type="submit" class="btn-pri">Conectar</button>
       </div>
     </form>
+  </dialog>
+
+  <!-- Instrucciones de instalación en iPhone/iPad -->
+  <dialog id="iosInstall" class="setup" aria-labelledby="iosTitle">
+    <div class="setup__form">
+      <h2 id="iosTitle">Instalar en iPhone / iPad</h2>
+      <ol class="steps">
+        <li>Abre esta página en <strong>Safari</strong>.</li>
+        <li>Toca el botón <strong>Compartir</strong> <span aria-hidden="true">(□↑)</span>.</li>
+        <li>Elige <strong>“Agregar a pantalla de inicio”</strong> y confirma con <strong>Agregar</strong>.</li>
+      </ol>
+      <div class="setup__actions"><span class="spacer"></span><button id="iosClose" type="button" class="btn-pri">Entendido</button></div>
+    </div>
   </dialog>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
